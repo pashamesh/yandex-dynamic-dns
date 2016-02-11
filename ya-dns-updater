@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# Update DNS records for Yandex DNS
+
+readonly DOMAIN='example.com'
+readonly SUBDOMAIN='mypc' # use @ for if no subdomain
+readonly DOMAIN_RECORD_ID='12345678'
+readonly API_TOKEN='gG7hKnY2A7EujXFf9d8WBBHGX4Gnj3mqDF7HS6FkPnnjXC9JvP22A6k6'
+
+current_ip=
+current_dns_ip=
+
+msg() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $@" >&2
+} # end err
+
+fail() {
+  msg "$@"
+  exit 1
+} # end fail
+
+resolve_ips() {
+  current_ip=$(wget -qO- http://ipecho.net/plain)
+  if [[ "$?" -ne 0 ]]; then
+    fail "Unable to get current ip"
+  fi
+  local full_domain=''
+  if [[ "${SUBDOMAIN}" != '@' ]]; then
+    full_domain+="${SUBDOMAIN}."
+  fi
+  full_domain+="${DOMAIN}"
+  current_dns_ip=$(dig +short ${full_domain} @dns1.yandex.ru)
+  if [[ "$?" -ne 0 ]]; then
+    fail "Unable to get current dns ip"
+  fi
+
+  msg "ip: ${current_ip}, dns ip: ${current_dns_ip}"
+} # end resolve_ips
+
+is_need_to_update() {
+  if [[ ! -z "${current_ip}" ]] && [[ ! -z "${current_dns_ip}" ]] \
+    && [[ "${current_ip}" != "${current_dns_ip}" ]]; then
+    return 0
+  fi
+  return 1
+} # end is_need_to_update
+
+update_dns_record() {
+  local url="https://pddimp.yandex.ru/nsapi/edit_a_record.xml?"
+  url+="token=${API_TOKEN}&domain=${DOMAIN}&subdomain=${SUBDOMAIN}"
+  url+="&record_id=${DOMAIN_RECORD_ID}&ttl=900&content=${current_ip}"
+  local response=$(wget -qO - ${url})
+  if [[ "$?" -ne 0 ]] || [[ "$response" != *"<error>ok</error>"* ]]; then
+    fail "Unable to update dns record"
+  fi
+  msg "dns record was updated succesfully"
+} # end update_dns_record()
+
+main() {
+  resolve_ips
+
+  if is_need_to_update; then
+    update_dns_record
+  fi
+}
+
+main "$@"
