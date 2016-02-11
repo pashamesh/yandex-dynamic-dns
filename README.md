@@ -28,3 +28,8 @@ chmod u+x ya-dns-updater
 
 ## Links
 [Yandex PDD API V1 documentation](https://tech.yandex.ru/pdd/doc/files/api-pdd-v1.pdf)
+
+## Roadmap
+- migrate to Yandex PDD API V2
+- add ability for recurrent script execution
+- add ability to configure IP adress resolve method
